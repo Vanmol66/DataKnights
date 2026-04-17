@@ -1227,3 +1227,39 @@ hr { border: none; border-top: 1px solid var(--border-light); margin: 24px 0; }
   .login-card-standalone { padding: 36px 24px; }
   .hero-card { padding: 28px 20px; }
 }
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: #0b1220;
+    border-bottom: 1px solid #1f2a44;
+}
+
+.logo {
+    color: #4cc9f0;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.nav-links a {
+    margin: 0 15px;
+    color: #cbd5e1;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.nav-links a:hover {
+    color: #4cc9f0;
+}
+
+.exit-btn {
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.exit-btn:hover {
+    color: #ff3b3b;
+}

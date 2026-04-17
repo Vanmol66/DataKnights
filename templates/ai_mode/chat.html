@@ -1,0 +1,190 @@
+{% extends "ai_mode/base.html" %}
+
+{% block content %}
+
+<style>
+
+.chat-container {
+    width: 70%;
+    margin: auto;
+    margin-top: 40px;
+}
+
+/* Chat box */
+.chat-box {
+    background: #0f172a;
+    padding: 20px;
+    border-radius: 12px;
+    min-height: 300px;
+}
+
+/* Messages */
+.chat-message {
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 12px;
+    max-width: 80%;
+}
+
+.chat-message.user {
+    background: #1e293b;
+    margin-left: auto;
+    text-align: right;
+}
+
+.chat-message.bot {
+    background: #020617;
+    border: 1px solid #1e293b;
+}
+
+/* Formatted LLM output */
+.formatted-response h2 {
+    color: #38bdf8;
+    margin-top: 15px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 5px;
+}
+
+.formatted-response p {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+.formatted-response ul {
+    padding-left: 20px;
+}
+
+.formatted-response li {
+    margin-bottom: 6px;
+}
+
+/* Input */
+.chat-input {
+    display: flex;
+    margin-top: 15px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+}
+
+.chat-input button {
+    margin-left: 10px;
+    padding: 12px 18px;
+    background: #38bdf8;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.chat-input button:hover {
+    background: #0ea5e9;
+}
+
+/* Loader */
+#loader {
+    display: none;
+    text-align: center;
+    margin-top: 15px;
+}
+
+.spinner {
+    border: 4px solid #1e293b;
+    border-top: 4px solid #38bdf8;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: auto;
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+
+/* Suggestions */
+.suggestions {
+    margin-top: 15px;
+}
+
+.suggestions button {
+    margin: 5px;
+    padding: 8px 12px;
+    background: #1e293b;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+}
+
+.suggestions button:hover {
+    background: #334155;
+}
+
+</style>
+
+<div class="chat-container">
+
+    <div class="chat-box">
+
+        <p>👋 Welcome! Ask anything about your dataset.</p>
+
+        {% for chat in chat_history %}
+            <div class="chat-message user">
+                {{ chat.question }}
+            </div>
+
+            <div class="chat-message bot">
+                <div class="formatted-response">
+                    {{ chat.answer | safe }}
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+
+    <!-- Loader -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>Analyzing dataset...</p>
+    </div>
+
+    <!-- Input -->
+    <form method="POST" class="chat-input">
+        <input 
+            type="text" 
+            name="question" 
+            placeholder="Ask something about your dataset..."
+            required
+        >
+        <button type="submit">Ask</button>
+    </form>
+
+    <!-- Suggestions -->
+    <div class="suggestions">
+        <p>💡 Try asking:</p>
+
+        <button type="button" onclick="fillQuestion('What trends exist in the dataset?')">Trends</button>
+        <button type="button" onclick="fillQuestion('What anomalies are present?')">Anomalies</button>
+        <button type="button" onclick="fillQuestion('Give key insights')">Insights</button>
+    </div>
+
+</div>
+
+<script>
+
+function fillQuestion(text) {
+    document.querySelector('input[name="question"]').value = text;
+}
+
+document.querySelector("form").addEventListener("submit", function() {
+    document.getElementById("loader").style.display = "block";
+});
+
+</script>
+
+{% endblock %}
