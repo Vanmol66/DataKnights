@@ -3,7 +3,13 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from werkzeug.utils import secure_filename
 import pandas as pd
 
+import markdown
+
 from flask_migrate import Migrate
+
+from ai_extension.llm.insight_engine import generate_insights
+from ai_extension.chat.pandas_agent import ask_question
+from ai_extension.report.pdf_generator import generate_pdf
 
 from utils.file_handler import save_uploaded_file, allowed_file
 from utils.data_analyzer import analyze_dataframe
@@ -16,6 +22,11 @@ from models.history import History
 
 from utils.data_cleaning import analyze_cleanliness
 from utils.dax_generator import generate_dax
+
+current_df = None
+current_insights = None
+current_summary = None
+current_charts = []
 
 # ✅ CREATE APP (ONLY ONCE)
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -82,35 +93,66 @@ def upload_page():
 
 @app.route("/analysis/<path:filename>")
 def analysis(filename):
+    global current_df, current_insights, current_summary
+
+    # -------------------------------
+    # 1. LOAD DATASET (SAFE)
+    # -------------------------------
     try:
         df = read_dataset(filename)
-    except:
-        return redirect(url_for("auth.home"))   # ✅ FIXED
 
+        # ✅ CRITICAL FIX (ADD THIS LINE)
+        session["current_file"] = filename
+
+    except Exception as e:
+        print("DATA LOAD ERROR:", e)
+        return f"<h3>Error loading dataset: {e}</h3>"
+
+    # -------------------------------
+    # 2. AI INITIALIZATION (SAFE + NON-BREAKING)
+    # -------------------------------
+    try:
+        current_df = df.head(500)
+
+        current_summary = {
+            "rows": len(df),
+            "columns": list(df.columns)
+        }
+
+        current_insights = generate_insights(current_df)
+
+    except Exception as ai_error:
+        print("AI ERROR:", ai_error)
+        current_insights = "AI insights unavailable"
+
+    # -------------------------------
+    # 3. EXISTING LOGIC (UNCHANGED)
+    # -------------------------------
     profile = analyze_dataframe(df)
 
     numeric = df.select_dtypes(include=["number"])
-    numeric_summary = numeric.describe().round(4).to_dict() if not numeric.empty else None
-    
+    numeric_summary = (
+        numeric.describe().round(4).to_dict()
+        if not numeric.empty else None
+    )
+
     cleaning_report = analyze_cleanliness(df)
     dax_recommendations = generate_dax(df)
-    
-    existing = None  # ✅ ALWAYS DEFINE FIRST
-# ✅ FOR LOGGED USER
+
+    existing = None
+
     if "user_id" in session:
         existing = History.query.filter_by(
             user_id=session["user_id"],
             filename=filename
         ).first()
 
-# ✅ FOR GUEST USER
     elif "guest_id" in session:
         existing = History.query.filter_by(
             guest_id=session["guest_id"],
             filename=filename
         ).first()
 
-# ✅ SAVE ONLY IF NOT EXISTS
     if not existing:
         new = History(
             user_id=session.get("user_id"),
@@ -121,6 +163,9 @@ def analysis(filename):
         db.session.add(new)
         db.session.commit()
 
+    # -------------------------------
+    # 4. FINAL RENDER (UNCHANGED UI)
+    # -------------------------------
     return render_template(
         "analysis.html",
         filename=filename,
@@ -130,7 +175,6 @@ def analysis(filename):
         dax=dax_recommendations,
         is_guest=("guest_id" in session)
     )
-
 
 @app.route("/charts/<path:filename>", methods=["GET", "POST"])
 def charts(filename):
@@ -206,6 +250,105 @@ def cleaning_page(filename):
         cleaning=cleaning_report,
         dax=dax_recommendations
     )
+
+
+
+from flask import send_file
+
+@app.route("/download_report")
+def download_report():
+
+    filename = session.get("current_file")
+
+    if not filename:
+        return "<h3>No dataset loaded.</h3>"
+
+    df = read_dataset(filename)
+
+    try:
+        insights = generate_insights(df.head(500))
+    except Exception as e:
+        insights = f"Insights unavailable: {e}"
+
+    summary = {
+        "rows": len(df),
+        "columns": list(df.columns)
+    }
+
+    generate_pdf(
+        "report.pdf",
+        summary=summary,
+        insights=insights,
+        charts=[]
+    )
+
+    return send_file("report.pdf", as_attachment=True)
+
+@app.route("/ai")
+def ai_home():
+    return render_template("ai_mode/home.html")
+
+
+
+@app.route("/ai/insights")
+def ai_insights():
+
+    global current_insights
+
+    filename = session.get("current_file")
+
+    if not filename:
+        return "<h3>No dataset loaded. Upload first.</h3>"
+
+    df = read_dataset(filename)
+
+    if not current_insights:
+        current_insights = generate_insights(df.head(100))
+
+    html_insights = markdown.markdown(current_insights)
+
+    return render_template(
+        "ai_mode/insights.html",
+        html_insights=html_insights
+    )
+
+@app.route("/ai/chat", methods=["GET", "POST"])
+def ai_chat():
+
+    filename = session.get("current_file")
+
+    if not filename:
+        return "<h3>No dataset loaded. Please upload first.</h3>"
+
+    df = read_dataset(filename)
+
+    if "chat_history" not in session:
+        session["chat_history"] = []
+
+    if request.method == "POST":
+        question = request.form["question"]
+
+        try:
+            raw_answer = ask_question(df.head(100), question)
+            answer = markdown.markdown(raw_answer, extensions=["fenced_code", "tables"])
+        except Exception as e:
+            answer = f"Error: {e}"
+
+        session["chat_history"].append({
+            "question": question,
+            "answer": answer
+        })
+
+        session.modified = True  # IMPORTANT
+
+    return render_template(
+        "ai_mode/chat.html",
+        chat_history=session["chat_history"]
+    )
+
+@app.route("/ai/report")
+def ai_report():
+    return render_template("ai_mode/report.html")
 
 
 if __name__ == "__main__":
