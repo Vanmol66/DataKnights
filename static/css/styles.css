@@ -1263,3 +1263,41 @@ hr { border: none; border-top: 1px solid var(--border-light); margin: 24px 0; }
 .exit-btn:hover {
     color: #ff3b3b;
 }
+
+/* AI MODE BUTTON */
+.ai-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+
+  height: 40px;
+  width: 170px;
+
+  border: none;
+  border-radius: 25px;
+
+  background: rgba(94, 65, 222, 0.2);
+  cursor: pointer;
+
+  transition: 0.3s ease;
+}
+
+.ai-btn span {
+  font-size: 15px;
+  color: #6c5ce7;
+  font-family: sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.ai-btn:hover {
+  background: rgba(94, 65, 222, 0.35);
+}
+
+.ai-btn svg {
+  transition: 0.5s;
+}
+
+.ai-btn:hover svg {
+  transform: rotate(360deg);
+}

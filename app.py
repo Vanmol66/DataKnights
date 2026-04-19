@@ -48,6 +48,8 @@ app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret-key")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
 
+
+
 # ✅ REGISTER BLUEPRINT
 from auth.routes import auth_bp
 app.register_blueprint(auth_bp)
@@ -55,7 +57,7 @@ app.register_blueprint(auth_bp)
 # --- Helper ---
 def read_dataset(filename):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-
+    session["current_dataset"] = filename
     if not os.path.exists(filepath):
         raise FileNotFoundError
 
@@ -76,14 +78,44 @@ def upload():
 
     if not file or file.filename == "":
         flash("No file selected", "warning")
-        return redirect(url_for("auth.home"))   # ✅ FIXED
+        return redirect(url_for("auth.home"))
 
     if not allowed_file(file.filename):
-        flash("Invalid file type", "danger")
-        return redirect(url_for("auth.home"))   # ✅ FIXED
+        flash("❌ Only CSV or Excel files allowed", "danger")
+        return redirect(url_for("auth.home"))
 
     filename = secure_filename(file.filename)
-    save_uploaded_file(file, app.config["UPLOAD_FOLDER"], filename)
+
+    # SAVE FILE
+    filepath = save_uploaded_file(file, app.config["UPLOAD_FOLDER"], filename)
+
+    # ✅ TRY READING FILE (VALIDATION)
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(filepath)
+        else:
+            df = pd.read_excel(filepath)
+
+        # ❌ EMPTY FILE CHECK
+        if df.empty:
+            flash("❌ Uploaded file is empty", "danger")
+            os.remove(filepath)
+            return redirect(url_for("auth.home"))
+
+        # ❌ INVALID STRUCTURE
+        if df.shape[1] == 0:
+            flash("❌ File has no usable columns", "danger")
+            os.remove(filepath)
+            return redirect(url_for("auth.home"))
+
+    except Exception as e:
+        os.remove(filepath)
+        flash(f"❌ Invalid dataset format: {str(e)}", "danger")
+        return redirect(url_for("auth.home"))
+
+    # ✅ SESSION SET (CRITICAL)
+    session["current_file"] = filename
+    session["current_dataset"] = filename
 
     return redirect(url_for("cleaning_page", filename=filename))
 
@@ -103,7 +135,7 @@ def analysis(filename):
 
         # ✅ CRITICAL FIX (ADD THIS LINE)
         session["current_file"] = filename
-
+        session["current_dataset"] = filename
     except Exception as e:
         print("DATA LOAD ERROR:", e)
         return f"<h3>Error loading dataset: {e}</h3>"
@@ -178,6 +210,11 @@ def analysis(filename):
 
 @app.route("/charts/<path:filename>", methods=["GET", "POST"])
 def charts(filename):
+
+    # ✅ ADD THIS LINE
+    session["current_file"] = filename
+    session["current_dataset"] = filename
+
     df = read_dataset(filename)
     profile = analyze_dataframe(df)
 
@@ -243,7 +280,9 @@ def cleaning_page(filename):
 
     cleaning_report = analyze_cleanliness(df)
     dax_recommendations = generate_dax(df)
-
+    date_cols = df.select_dtypes(include=["datetime"]).columns
+    if len(date_cols):
+        flash("ℹ️ Date columns detected. Some statistical measures skipped.", "info")
     return render_template(
         "cleaning.html",
         filename=filename,
@@ -289,7 +328,39 @@ def ai_home():
     return render_template("ai_mode/home.html")
 
 
+from flask import session, redirect
 
+
+import os
+
+@app.route("/ai/dashboard")
+def ai_dashboard():
+    import subprocess
+    import time
+    import os
+
+    filename = session.get("current_file")
+
+    if not filename:
+        return "<h3>❌ No dataset found. Please upload first.</h3>"
+
+    # ✅ FIXED PATH
+    dataset_path = os.path.abspath(os.path.join("uploads", filename))
+
+    # Start Streamlit if not running
+    try:
+        import requests
+        requests.get("http://localhost:8501")
+    except:
+        subprocess.Popen([
+            "streamlit",
+            "run",
+            "streamlit_app.py",
+            "--server.port=8501"
+        ])
+        time.sleep(2)
+
+    return redirect(f"http://localhost:8501/?dataset={dataset_path}")
 @app.route("/ai/insights")
 def ai_insights():
 
@@ -350,6 +421,9 @@ def ai_chat():
 def ai_report():
     return render_template("ai_mode/report.html")
 
+@app.route("/debug")
+def debug():
+    return str(session.get("current_file"))
 
 if __name__ == "__main__":
     app.run(debug=True)

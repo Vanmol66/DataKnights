@@ -1,97 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>AI Mode</title>
-    <div style="margin-left:auto;">
-    <a href="/" style="color:#f87171;">Exit AI Mode</a>
-</div>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
         body {
             background: #0b1220;
             color: #e5e7eb;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
         }
 
+        /* NAVBAR */
         .navbar {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             padding: 15px 40px;
             background: #020617;
             border-bottom: 1px solid #1e293b;
         }
 
-        .nav-left a {
-            margin-right: 20px;
-            text-decoration: none;
+        .logo {
+            font-weight: 600;
+            font-size: 18px;
             color: #38bdf8;
+        }
+
+        .nav-links a {
+            margin: 0 12px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: #38bdf8;
+        }
+
+        .nav-links a.active {
+            color: #38bdf8;
+            border-bottom: 2px solid #38bdf8;
+            padding-bottom: 4px;
+        }
+
+        .exit-btn {
+            color: #f87171;
+            text-decoration: none;
             font-weight: 500;
         }
 
+        .exit-btn:hover {
+            color: #ef4444;
+        }
+
+        /* MAIN CONTAINER */
         .container {
             max-width: 1100px;
             margin: auto;
             padding: 30px;
         }
 
-        h1, h2 {
-            margin-bottom: 15px;
+        /* CARD */
+        .card {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 0 1px #1e293b;
         }
 
+        /* BUTTON */
         button {
             background: #38bdf8;
             border: none;
             padding: 10px 18px;
             color: #000;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: 500;
         }
 
+        button:hover {
+            background: #0ea5e9;
+        }
+
+        /* INPUT */
         input {
             padding: 10px;
-            width: 300px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: none;
-            margin-right: 10px;
+            outline: none;
         }
 
+        /* PRE / CODE */
         pre {
             background: #020617;
             padding: 15px;
             border-radius: 8px;
             overflow-x: auto;
         }
-        .nav-links a {
-    margin: 0 10px;
-    color: #38bdf8;
-    text-decoration: none;
-}
 
-.nav-links a:hover {
-    color: #22d3ee;
-}
+        /* CHAT COMMON */
+        .chat-container {
+            max-width: 800px;
+            margin: auto;
+        }
+
+        /* LOADING DOTS */
+        .loader {
+            display: flex;
+            gap: 5px;
+        }
+
+        .loader span {
+            width: 8px;
+            height: 8px;
+            background: #38bdf8;
+            border-radius: 50%;
+            animation: bounce 1.2s infinite;
+        }
+
+        .loader span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loader span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
     </style>
 </head>
 
 <body>
 
+<!-- NAVBAR -->
 <nav class="navbar">
-    <div class="nav-left">
-        <span class="logo">⚡ AI Analyzer</span>
-    </div>
+
+    <div class="logo">⚡ AI Analyzer</div>
 
     <div class="nav-links">
-        <a href="/ai">Dashboard</a>
+        <a href="/ai"></a>
+        <a href="http://localhost:8501" target="_blank">Dashboard</a>
         <a href="/ai/insights">Insights</a>
         <a href="/ai/chat">Chat</a>
         <a href="/ai/report">Report</a>
     </div>
 
-    <div class="nav-right">
-        <a href="/" class="exit-btn">Exit AI Mode</a>
+    <div>
+       <a href="{{ url_for('charts', filename=session.get('current_file')) }}" style="color:#f87171;">
+    Exit AI Mode
+</a>
     </div>
+
 </nav>
 
+<!-- MAIN CONTENT -->
 <div class="container">
     {% block content %}{% endblock %}
 </div>
